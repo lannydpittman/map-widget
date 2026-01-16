@@ -208,6 +208,11 @@
 
 (define (default-lines-pen)
   (send the-pen-list find-or-create-pen (make-object color% 226 34 62) 3 'solid 'round 'round))
+
+;NEW ::::::::::::::::::::::::::::::::::::::::::::::
+(define (default-lines-brush)
+  (send the-brush-list find-or-create-brush "white" 'transparent))
+;NEW ::::::::::::::::::::::::::::::::::::::::::::::
 (define (default-lines-zorder)
   0.8)
 
@@ -218,7 +223,8 @@
     (init [zorder (default-lines-zorder)])
     (init-field
      [lines '()]
-     [pen (default-lines-pen)])
+     [pen (default-lines-pen)]
+     [brush (default-lines-brush)]) ;changed to allow brush
     (super-new [zorder zorder])
     (inherit get-admin)
 
@@ -240,11 +246,12 @@
            [name (send this get-name)]
            [zorder (send this get-zorder)]
            [lines lines]
-           [pen pen]))
+           [pen pen]
+           [brush brush])) ;add brush
 
     (define/public (draw dc the-zoom-level)
       (send dc set-pen pen)
-      (send dc set-brush transparent-brush)
+      (send dc set-brush brush) ;transparent-brush) changed!
       (for ([line (in-list lines)])
         (send line draw dc the-zoom-level)))
 
@@ -262,6 +269,12 @@
         (when a
           (send a refresh))))
 
+    (define/public (set-brush b)  ;;;add set-brush function
+      (set! brush b)
+      (let ([a (get-admin)])
+        (when a
+          (send a refresh))))
+
     (define/public (clear)
       (set! lines '())
       (set! the-bbox #f))
@@ -274,13 +287,15 @@
          name
          lines
          #:pen (pen (default-lines-pen))
+         #:brush (brush (default-lines-brush))
          #:zorder (zorder (default-lines-zorder)))
   (new lines-layer%
        [name name]
        [lines (for/list ([wps (in-list lines)])
                 (new line% [waypoints wps]))]
        [zorder zorder]
-       [pen pen]))
+       [pen pen]
+       [brush brush]))
 
 ;; Convenience function to create a lines-layer% with a single track or
 ;; waypoints
@@ -288,12 +303,14 @@
          name
          waypoints
          #:pen (pen (default-lines-pen))
+         #:brush (brush (default-lines-brush))
          #:zorder (zorder (default-lines-zorder)))
   (new lines-layer%
        [name name]
        [lines (list (new line% [waypoints waypoints]))]
        [zorder zorder]
-       [pen pen]))
+       [pen pen]
+       [brush brush]))
 
 
 ;;....................................................... markers-layer% ....
@@ -685,8 +702,8 @@
     (define/public (clear)
       (set! the-point-cloud #f)
       (let ([a (get-admin)])
-          (when a
-            (send a refresh))))
+        (when a
+          (send a refresh))))
 
     ))
 
