@@ -1051,6 +1051,7 @@
   (->* ((or/c symbol? integer?)
         (sequence/c (vector/c real? real?)))
        (#:pen (is-a?/c pen%)
+        #:brush (is-a?/c brush%)
         #:zorder (between/c 0 1))
        (is-a?/c lines-layer%)))
 
@@ -1058,6 +1059,7 @@
   (->* ((or/c symbol? integer?)
         (listof (sequence/c (vector/c real? real?))))
        (#:pen (is-a?/c pen%)
+        #:brush (is-a?/c brush%)
         #:zorder (between/c 0 1))
        (is-a?/c lines-layer%)))
 
