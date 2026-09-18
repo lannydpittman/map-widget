@@ -6,7 +6,7 @@
 ;; This file is part of map-widget -- A Racket GUI Widget to display maps
 ;; based on OpenStreetMap tiles
 ;;
-;; Copyright (c) 2019, 2023 Alex Harsányi <AlexHarsanyi@gmail.com>
+;; Copyright (c) 2019, 2023, 2026 Alex Harsányi <AlexHarsanyi@gmail.com>
 ;;
 ;; This program is free software: you can redistribute it and/or modify it
 ;; under the terms of the GNU Lesser General Public License as published by
@@ -22,15 +22,15 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 (require
- racket/math
- racket/class
- racket/gui/base
- racket/match
- pict
- "utilities.rkt"          ; for get-pref
- "map-util.rkt"
- "tiles.rkt"
- "layers.rkt")
+  racket/math
+  racket/class
+  racket/gui/base
+  racket/match
+  pict
+  "utilities.rkt"          ; for get-pref
+  "map-util.rkt"
+  "tiles.rkt"
+  "layers.rkt")
 
 (provide map-impl%)
 
@@ -53,34 +53,34 @@
         [old-text-fg (send dc get-text-foreground)]
         [old-text-bg (send dc get-text-background)])
     (dynamic-wind
-      (lambda ()
-        (send dc set-smoothing 'smoothed))
-      thunk
-      (lambda ()
-        (send dc set-smoothing old-smoothing)
-        (send dc set-pen old-pen)
-        (send dc set-brush old-brush)
-        (send dc set-font old-font)
-        (send dc set-text-foreground old-text-fg)
-        (send dc set-text-background old-text-bg)))))
+     (lambda ()
+       (send dc set-smoothing 'smoothed))
+     thunk
+     (lambda ()
+       (send dc set-smoothing old-smoothing)
+       (send dc set-pen old-pen)
+       (send dc set-brush old-brush)
+       (send dc set-font old-font)
+       (send dc set-text-foreground old-text-fg)
+       (send dc set-text-background old-text-bg)))))
 
 (define (with-origin dc origin-x origin-y thunk)
   (let-values (([ox oy] (send dc get-origin)))
     (dynamic-wind
-      (lambda ()
-        (send dc set-origin (- origin-x) (- origin-y)))
-      thunk
-      (lambda ()
-        (send dc set-origin ox oy)))))
+     (lambda ()
+       (send dc set-origin (- origin-x) (- origin-y)))
+     thunk
+     (lambda ()
+       (send dc set-origin ox oy)))))
 
 ;; Set a clipping rect at X,Y,WIDTH and HEIGHT onto the device context DC,
 ;; than execute THUNK.  The original clipping rect is restored at the end.
 (define (with-clipping-rect dc x y width height thunk)
   (let ([old-clipping-region (send dc get-clipping-region)])
     (dynamic-wind
-      (lambda () (send dc set-clipping-rect x y width height))
-      thunk
-      (lambda () (send dc set-clipping-region old-clipping-region)))))
+     (lambda () (send dc set-clipping-rect x y width height))
+     thunk
+     (lambda () (send dc set-clipping-region old-clipping-region)))))
 
 ;; A timer which does not restart when it is already running.  Calling `start`
 ;; on a `timer%` class will reset the alarm interval and, if `start` is called
@@ -250,20 +250,34 @@
       (limit-origin width height)
       (refresh))
 
+    ;; Convert local (widget) coordinates to global coordinates (map (WGS84) coordinates),
+    ;; Returns #f,#f if x,y point to an "unreachable" map location
+    ;;
+    ;; Note that npoint->lat-lon returns two values
+    (define/public (pos-local->global x y)
+      (if (and (< x max-coord) (< y max-coord))
+          (let ([lcx (/ (+ origin-x x) max-coord)]
+                [lcy (/ (+ origin-y y) max-coord)])
+            (npoint->lat-lon (npoint lcx lcy)))
+          (values #f #f)))
+
+    ;; Retrieve the geographical point at the centre of the map
+    (define/public (get-position)
+      (let ([wid (/ width 2)]
+            [hei (/ height 2)])
+        (pos-local->global wid hei)))
+
     ;; Handle a mouse event.  Return #t if the event was handled, #f
     ;; otherwise.
     (define/public (on-event dc x y editorx editory event)
-      (cond ((send event button-down? 'left)
-             (set! last-mouse-x (send event get-x))
-             (set! last-mouse-y (send event get-y))
-             ;; Return as "Not handled', let others maybe handle it
-             #f)
-            ((send event button-up? 'left)
+      (cond ((and (send event button-up? 'left) last-mouse-x last-mouse-y)
              (set! last-mouse-x #f)
              (set! last-mouse-y #f)
-             ;; Return as "Not handled', let others maybe handle it
-             #f)
-            ((send event dragging?)
+             ;; Handle the release of the "dragging" operation, and flag the
+             ;; event as handled.
+             #t)
+
+            ((and (send event get-left-down) (send event dragging?))
              (let ((mouse-x (send event get-x))
                    (mouse-y (send event get-y)))
                (when (and last-mouse-x last-mouse-y)
@@ -273,10 +287,8 @@
              (set! auto-resize-to-fit? #f)
              ;; Event was handled
              #t)
-            (#t
-             ;; Else pass it on to any layers that wish to handle mouse
-             ;; events, and return true if they handled the event.
-             ;; Automatically returns #f when no layers handle the event.
+
+            (else
              (for/or ([l (in-list the-mouse-event-layers)])
                (send l on-mouse-event dc x y editorx editory event)))))
 

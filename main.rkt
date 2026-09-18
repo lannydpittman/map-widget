@@ -51,7 +51,10 @@
          points-layer
          markers-layer
          point-cloud-layer
-         current-location-layer)
+         current-location-layer
+         
+         interaction-layer
+         interaction-layer%)
 
 ;; Notice
 ;; To install (from within the package directory):
