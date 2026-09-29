@@ -1076,7 +1076,7 @@
   (-> (is-a?/c mouse-event%)
       (or/c real? #f)
       (or/c real? #f)
-      boolean?))
+      (or/c void? boolean?)))
 
 
 (provide
